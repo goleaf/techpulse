@@ -1,11 +1,9 @@
+
+// Fix: Import Heading from the central types file.
+import type { Heading } from '../types';
+
 // Average reading speed in words per minute
 const WORDS_PER_MINUTE = 200;
-
-export interface Heading {
-    level: number;
-    text: string;
-    slug: string;
-}
 
 /**
  * Calculates the estimated reading time for a given text.

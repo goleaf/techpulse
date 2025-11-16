@@ -1,13 +1,17 @@
+
+
 import React, {useRef, useState, useEffect, useMemo} from 'react';
-import type { Article } from '../types';
+import type { Article, FactCheck, Heading, PollData } from '../types';
 import ArticleReadingProgress from './ArticleReadingProgress';
 import Breadcrumb from './Breadcrumb';
 import LazyImage from './LazyImage';
 import ImageLightbox from './ImageLightbox';
 import AuthorBio from './AuthorBio';
 import CommentsSection from './CommentsSection';
-import { parseHeadings, Heading } from '../utils/contentUtils';
+import { parseHeadings } from '../utils/contentUtils';
 import TableOfContents from './TableOfContents';
+import FactCheckBadge from './FactCheckBadge';
+import ArticlePoll from './ArticlePoll';
 
 interface ArticleDetailProps {
   article: Article;
@@ -22,30 +26,73 @@ interface ArticleDetailProps {
 
 type FontSize = 'base' | 'lg' | 'xl';
 
-const MarkdownRenderer: React.FC<{ content: string; headings: Heading[] }> = ({ content, headings }) => {
+const ArticleBodyRenderer: React.FC<{ content: string; headings: Heading[]; factChecks?: FactCheck[]; articleId: string; poll?: PollData; }> = ({ content, headings, factChecks, articleId, poll }) => {
     let headingIndex = 0;
-    const paragraphs = content.split('\n\n');
     
+    // Split content into paragraphs
+    const paragraphs = content.split('\n\n');
+
     return (
         <>
             {paragraphs.map((para, index) => {
+                // Check for POLL marker
+                if (para.trim() === '[POLL]' && poll) {
+                    return <ArticlePoll key={`poll-${index}`} articleId={articleId} poll={poll} />;
+                }
+                
+                // If it's a heading line
                 if (para.startsWith('#')) {
                     const currentHeading = headings[headingIndex++];
                     if (currentHeading) {
-                        const level = para.match(/^#+/)![0].length;
-                        const text = para.substring(level).trim();
+                        // Fix: Use React.JSX to avoid namespace error and provide correct types for dynamic tags.
+                        const Tag = `h${currentHeading.level}` as keyof React.JSX.IntrinsicElements;
+                        const className = currentHeading.level === 2
+                            ? "text-2xl md:text-3xl font-bold mt-8 mb-4 scroll-mt-24"
+                            : "text-xl md:text-2xl font-bold mt-6 mb-3 scroll-mt-24";
                         
-                        if (level === 3) {
-                             return <h3 key={index} id={currentHeading.slug} className="text-xl md:text-2xl font-bold mt-6 mb-3 scroll-mt-24">{text}</h3>;
-                        }
-                        if (level === 2) {
-                             return <h2 key={index} id={currentHeading.slug} className="text-2xl md:text-3xl font-bold mt-8 mb-4 scroll-mt-24">{text}</h2>;
-                        }
-                        if (level === 1) {
-                             return <h1 key={index} id={currentHeading.slug} className="text-3xl md:text-4xl font-black mt-10 mb-6 scroll-mt-24">{text}</h1>;
-                        }
+                        // FIX: Replaced JSX with a dynamic tag with React.createElement to fix the "does not have any construct or call signatures" error.
+                        return React.createElement(Tag, { key: index, id: currentHeading.slug, className: className }, currentHeading.text);
                     }
                 }
+
+                // If it's a regular paragraph, check for claims
+                if (factChecks && factChecks.length > 0) {
+                    // Fix: Use React.ReactNode which is a more robust type for JSX content.
+                    let currentParaContent: (string | React.ReactNode)[] = [para];
+
+                    factChecks.forEach((fc) => {
+                        // Only process claims that are actually in this paragraph string
+                        if (para.includes(fc.claim)) {
+                            // Fix: Use React.ReactNode for consistency.
+                            const newParaContent: (string | React.ReactNode)[] = [];
+                            currentParaContent.forEach((segment) => {
+                                if (typeof segment === 'string') {
+                                    const parts = segment.split(fc.claim);
+                                    // Interleave the parts with the claim and badge
+                                    for (let i = 0; i < parts.length; i++) {
+                                        newParaContent.push(parts[i]);
+                                        if (i < parts.length - 1) { // Don't add after the last part
+                                            newParaContent.push(
+                                                <React.Fragment key={`${fc.claim}-${i}`}>
+                                                    <span className="bg-yellow-100 dark:bg-yellow-900/40 rounded px-1 py-0.5">{fc.claim}</span>
+                                                    <FactCheckBadge factCheck={fc} />
+                                                </React.Fragment>
+                                            );
+                                        }
+                                    }
+                                } else {
+                                    // If it's already a JSX element, just push it
+                                    newParaContent.push(segment);
+                                }
+                            });
+                            currentParaContent = newParaContent;
+                        }
+                    });
+                    
+                    return <p key={index} className="mb-6 leading-relaxed">{currentParaContent}</p>;
+                }
+
+                // Default paragraph rendering if no fact-checks
                 return <p key={index} className="mb-6 leading-relaxed">{para}</p>;
             })}
         </>
@@ -58,8 +105,21 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, allArticles, onG
   const [fontSize, setFontSize] = useState<FontSize>('lg');
   const [isLightboxOpen, setLightboxOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isReaderMode, setIsReaderMode] = useState(false);
   
   const headings = useMemo(() => parseHeadings(article.content), [article.content]);
+
+  useEffect(() => {
+    if (isReaderMode) {
+      document.body.classList.add('reader-mode-active');
+    } else {
+      document.body.classList.remove('reader-mode-active');
+    }
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('reader-mode-active');
+    };
+  }, [isReaderMode]);
 
   const fontSizes: FontSize[] = ['base', 'lg', 'xl'];
   const handleFontSizeChange = () => {
@@ -103,7 +163,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, allArticles, onG
     <>
     <ArticleReadingProgress target={articleRef} />
     
-    <div className="flex gap-12 max-w-7xl mx-auto">
+    <div className="article-detail-container flex gap-12 max-w-7xl mx-auto">
        {headings.length > 2 && <TableOfContents headings={headings} />}
 
       <div className="max-w-4xl flex-grow">
@@ -129,6 +189,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, allArticles, onG
                    </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => setIsReaderMode(!isReaderMode)} 
+                    aria-label="Toggle Reader Mode" 
+                    className={`p-2 rounded-full transition-colors ${isReaderMode ? 'bg-blue-100 dark:bg-blue-900/50' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                  >
+                    <ReaderModeIcon active={isReaderMode} />
+                  </button>
                   <button onClick={handlePrint} aria-label="Print article" className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><PrintIcon /></button>
                   <button onClick={handleFontSizeChange} aria-label="Change font size" className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><FontIcon /></button>
                   <button 
@@ -147,7 +214,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, allArticles, onG
             </div>
             
             <div className={`prose prose-${fontSize} dark:prose-invert max-w-none text-gray-700 dark:text-gray-300`}>
-                 <MarkdownRenderer content={article.content} headings={headings} />
+                <ArticleBodyRenderer content={article.content} headings={headings} factChecks={article.factChecks} articleId={article.id} poll={article.poll} />
             </div>
 
             <footer className="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-8">
@@ -233,6 +300,7 @@ const BookmarkSolidIcon = () => <svg xmlns="http://www.w3.org/2000/svg" classNam
 const FontIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v12M18 7h-5m2 0v8" /></svg>;
 const PrintIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>;
 const CheckIconSolid = () => <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>;
+const ReaderModeIcon = ({ active }: { active: boolean }) => <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-colors ${active ? 'text-blue-500' : 'text-gray-600 dark:text-gray-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>;
 
 const TwitterIcon = () => <svg className="h-5 w-5" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><title>X</title><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.931ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>;
 const FacebookIcon = () => <svg className="h-5 w-5" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><title>Facebook</title><path d="M22.675 0h-21.35C.59 0 0 .59 0 1.325v21.35C0 23.41.59 24 1.325 24H12.82v-9.29h-3.128V11.21h3.128V8.65c0-3.1 1.893-4.788 4.658-4.788 1.325 0 2.463.099 2.795.143v3.24h-1.918c-1.504 0-1.795.715-1.795 1.763v2.31h3.587l-.467 3.492h-3.12V24h5.698c.735 0 1.325-.59 1.325-1.325V1.325C24 .59 23.41 0 22.675 0z"/></svg>;

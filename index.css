@@ -1,0 +1,63 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/inter/900.css';
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-in-out;
+  }
+  .body-no-scroll {
+    overflow: hidden;
+  }
+  
+  /* Reader Mode Styles */
+  .reader-mode-active header,
+  .reader-mode-active footer,
+  .reader-mode-active aside,
+  .reader-mode-active #back-to-top,
+  .reader-mode-active #article-controls .flex.items-center.gap-1 > button:not([aria-label*="Reader Mode"]),
+  .reader-mode-active #related-articles,
+  .reader-mode-active #comments-section,
+  .reader-mode-active #toast-container,
+  .reader-mode-active #live-updates-banner,
+  .reader-mode-active #breadcrumb-nav {
+    display: none !important;
+  }
+  .reader-mode-active .article-detail-container {
+    justify-content: center;
+  }
+  .reader-mode-active main {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+  
+  /* Print Styles */
+  @media print {
+    header, footer, aside, #back-to-top, #article-controls, #related-articles, #comments-section, #toast-container, #progress-bar, #breadcrumb-nav {
+      display: none !important;
+    }
+    body {
+      background-color: white !important;
+    }
+    main {
+      padding: 0 !important;
+    }
+    article {
+      box-shadow: none !important;
+      border: none !important;
+    }
+  }
+}
+

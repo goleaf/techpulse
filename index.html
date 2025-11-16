@@ -10,71 +10,7 @@
       content="TechPulse - Your AI-powered guide to the latest in technology. In-depth articles on AI, Software, Hardware, and more."
     />
     <title>TechPulse | AI-Powered Tech News</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            typography: (theme) => ({
-              DEFAULT: {
-                css: {
-                  '--tw-prose-body': theme('colors.gray[700]'),
-                  '--tw-prose-headings': theme('colors.gray[900]'),
-                  '--tw-prose-invert-body': theme('colors.gray[300]'),
-                  '--tw-prose-invert-headings': theme('colors.gray[100]'),
-                }
-              }
-            })
-          },
-        },
-      }
-    </script>
-    <style>
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .animate-fadeIn {
-        animation: fadeIn 0.4s ease-in-out;
-      }
-      .body-no-scroll {
-        overflow: hidden;
-      }
-      @media print {
-        header, footer, aside, #back-to-top, #article-controls, #related-articles, #comments-section, #toast-container, #progress-bar, #breadcrumb-nav {
-          display: none !important;
-        }
-        body {
-          background-color: white !important;
-        }
-        main {
-          padding: 0 !important;
-        }
-        article {
-          box-shadow: none !important;
-          border: none !important;
-        }
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>

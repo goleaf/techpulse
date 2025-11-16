@@ -11,6 +11,8 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import Toast from './components/Toast';
 import BackToTopButton from './components/BackToTopButton';
 import SearchModal from './components/SearchModal';
+import LiveUpdatesBanner from './components/LiveUpdatesBanner';
+import DebugPanel from './components/DebugPanel';
 
 const App: React.FC = () => {
   const [isDarkMode, toggleDarkMode] = useDarkMode();
@@ -27,6 +29,7 @@ const App: React.FC = () => {
   const [appView, setAppView] = useState<'home' | 'saved'>('home');
   const [sortOrder, setSortOrder] = useState<'newest' | 'popular'>('newest');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [liveUpdate, setLiveUpdate] = useState<{ message: string; type: 'breaking' | 'update' } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type, id: Date.now() });
@@ -46,17 +49,37 @@ const App: React.FC = () => {
   };
 
   const loadArticles = useCallback(async (category: string) => {
+    console.log(`\n🔄 [APP] Loading articles for category: ${category}`);
     setIsLoading(true);
     setError(null);
     setSelectedArticle(null);
+    
     try {
       const fetchedArticles = await fetchNewsArticles(category);
+      console.log(`✅ [APP] Successfully loaded ${fetchedArticles.length} articles`);
       setArticles(fetchedArticles);
     } catch (err) {
-      setError('Failed to fetch articles. The AI might be taking a coffee break. Please try again later.');
-      console.error(err);
+      console.error('❌ [APP] Error loading articles:', err);
+      
+      let errorMessage = 'Failed to fetch articles. The AI might be taking a coffee break. Please try again later.';
+      
+      if (err instanceof Error) {
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack,
+          name: err.name,
+        });
+        
+        // Use the specific error message if available
+        if (err.message.includes('API key') || err.message.includes('quota') || err.message.includes('Network')) {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
+      console.log('🏁 [APP] Loading complete');
     }
   }, []);
 
@@ -67,6 +90,28 @@ const App: React.FC = () => {
     setSelectedTag(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, appView]);
+
+  // Simulate receiving live updates
+  useEffect(() => {
+      const breakingNewsTimer = setTimeout(() => {
+        setLiveUpdate({ 
+          message: 'BREAKING: Quantum computing breakthrough announced by leading research lab.',
+          type: 'breaking' 
+        });
+      }, 8000); // Show banner after 8 seconds
+
+      const contentUpdateTimer = setTimeout(() => {
+        setLiveUpdate({
+            message: 'A new AI-focused article has just been published. Check out the "Latest" section!',
+            type: 'update',
+        });
+      }, 20000); // Show another banner after 20 seconds
+      
+      return () => {
+        clearTimeout(breakingNewsTimer);
+        clearTimeout(contentUpdateTimer);
+      };
+  }, []);
 
   const handleSelectCategory = (category: string) => {
     setAppView('home');
@@ -154,6 +199,15 @@ const App: React.FC = () => {
         onSetAppView={handleSetAppView}
         appView={appView}
       />
+      <div id="live-updates-banner">
+        {liveUpdate && (
+          <LiveUpdatesBanner 
+            message={liveUpdate.message} 
+            type={liveUpdate.type} 
+            onClose={() => setLiveUpdate(null)} 
+          />
+        )}
+      </div>
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div key={animationKey} className="animate-fadeIn">
           {error ? (
@@ -210,6 +264,7 @@ const App: React.FC = () => {
             onSelectArticle={handleSelectArticle}
           />
       )}
+      <DebugPanel />
     </div>
   );
 };

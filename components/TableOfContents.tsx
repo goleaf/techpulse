@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import type { Heading } from '../utils/contentUtils';
+// Fix: Import Heading from the central types file for consistency.
+import type { Heading } from '../types';
 
 interface TableOfContentsProps {
   headings: Heading[];
